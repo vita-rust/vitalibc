@@ -1,0 +1,48 @@
+extend = "common.toml"
+
+[config]
+load_script = [
+  """
+  if [ ! -f common.toml ]; then
+    curl -SsL https://github.com/vita-rust/common/raw/master/common.toml > common.toml;
+  fi
+  """
+]
+
+[tasks.default]
+alias = "build"
+
+
+### TESTING ####################################################################
+
+[tasks.build-native]
+command = "cargo"
+args = ["build"]
+
+[tasks.test-native]
+command = "cargo"
+args = ["test"]
+
+
+### RELEASE FLOW ###############################################################
+
+[tasks.pre-publish]
+dependencies = ["verify-project"]
+
+[tasks.publish]
+alias = 'crates-publish'
+
+[tasks.crates-publish]
+script = ['cargo publish --token $CRATES_IO_TOKEN']
+
+[tasks.post-publish]
+dependencies = ["chandler"]
+
+[tasks.chandler]
+description = "Update GitHub release notes with appropriate CHANGELOG sections"
+install_script = ["gem install chandler -n target/gems"]
+script = [
+  '''
+  target/gems/chandler push --github=$(echo $CARGO_MAKE_CRATE_REPOSITORY | cut -d/ -f4-5)
+  '''
+]
